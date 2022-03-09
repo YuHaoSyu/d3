@@ -9,7 +9,7 @@ class PieChart {
       marginRight: 30,
       innerRadius: 0,
       outerRadius: 100,
-      dur: 500,
+      dur: 1000,
       type: 'pie',
       height: 600,
       theme: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40'],
@@ -40,6 +40,10 @@ class PieChart {
     return [this.width, this.height]
   }
 
+  get center() {
+    return d3.map(this.viewport, b => b / 2)
+  }
+
   initVis(container, width, height, ml, mt) {
     const vis = this
     const view = d3
@@ -51,136 +55,144 @@ class PieChart {
     vis.width -= vis.marginX
     vis.height -= vis.marginY
     vis.createArc()
-    this.view = view
+    vis.view = view
   }
   createArc() {
-    this.arc = d3.arc() //.padAngle((Math.PI * 3) / 180)
-    this.pie = d3.pie().sort(null)
-    this.color = d3.scaleOrdinal(this.theme)
-  }
-  wrangleData(ds) {
-    let sorted = d3.map(Object.values(ds), data =>
-      d3.sort(Object.entries(data), (a, b) => d3.descending(a[1], b[1]))
-    )
-    sorted = d3.map(sorted, arr => Object.fromEntries(new Map([...arr])))
-
-    this.updateVis(Object.values(sorted))
-  }
-  get center() {
-    return d3.map(this.viewport, b => b / 2)
-  }
-  updateGroup(datum) {
     const vis = this
-    d3.map(datum, (data, index) =>
+    vis.arc = d3.arc().padAngle((Math.PI * 3) / 180)
+    vis.pie = d3
+      .pie()
+      .sort(null)
+      .sort((a, b) => b - a)
+    vis.color = d3.scaleOrdinal(vis.theme)
+  }
+
+  wrangleData(ds) {
+    const vis = this
+    const values = Object.values(ds)
+    const generator = d3.map(values, data => vis.pie(Object.values(data)))
+
+    const viewBoxMin = d3.min(vis.viewport)
+    const layers = generator.length
+    const radius = viewBoxMin / 2 / layers
+
+    d3.map(generator, (data, index) =>
       d3.map(data, d => {
         d.layer = index
+        d.innerRadius = radius * index + (index && +30)
+        d.outerRadius = radius + index * radius
         return d
       })
     )
-    vis.groups = vis.view.selectAll('.enter').data(datum)
-    vis.groups
-      .enter()
-      .append('g')
-      .attrs(() => ({ class: 'enter' }))
 
-    vis.groups
-      .exit()
-      .attrs({ opacity: 1, class: 'exit' })
-      .transition(vis.t)
-      .attrs({ opacity: 0 })
-      .remove()
+    vis.updateVis(values, generator).then(() => {
+      d3.selectAll('.enterPath')
+        .on('mouseenter', e => {
+          vis.hover(e, vis.arc, 1.1)
+        })
+        .on('mouseleave', e => {
+          vis.hover(e, vis.arc, 1)
+        })
+        .attr('class', '')
+    })
   }
-  updateVis(datum) {
+
+  updateGroup(datum) {
     const vis = this
-    const viewBoxMin = d3.min(this.viewport)
-    const layers = datum.length
-    const radius = viewBoxMin / (2 * layers)
-    const pieGenerators = d3.map(datum, data => vis.pie(Object.values(data)))
+    vis.groups = vis.view
+      .selectAll('.enter')
+      .data(datum)
+      .join(
+        enter => enter.append('g').attrs(() => ({ class: 'enter' })),
+        update => update,
+        exit =>
+          exit
+            .attrs({ opacity: 1, class: 'exit' })
+            .transition(vis.t)
+            .attrs({ opacity: 0 })
+            .remove()
+      )
+  }
+
+  updateRadius({ innerRadius, outerRadius }, lerp) {
+    const vis = this
+    return vis.arc
+      .padRadius(innerRadius)
+      .innerRadius(innerRadius)
+      .outerRadius(outerRadius)(lerp)
+  }
+
+  storeArc(el, transArc) {
+    const lerp = d3.interpolate({ ...el.__oldData__ }, transArc)
+    el.__oldData__ = transArc
+    return lerp
+  }
+
+  async updateVis(datum, pieGenerators) {
+    const vis = this
+
     vis.updateGroup(pieGenerators)
-    const angleInterpolation = d3.map(pieGenerators, d =>
-      d3.interpolate(vis.pie.startAngle, vis.pie.endAngle)
-    )
-    console.log(angleInterpolation)
+
     const enterGroup = vis.view
       .selectAll('.enter')
       .selectAll('path')
       .data(d => d)
 
-    enterGroup
+    await enterGroup
       .enter()
       .append('path')
-      .attrs((d, i) => {
-        return {
-          transform: `translate(${this.center})`,
-          fill: this.color(i) + '33',
-          stroke: this.color(i)
-        }
+      .attrs((d, i) => ({
+        class: 'enterPath',
+        transform: `translate(${this.center})`,
+        fill: this.color(i) + '33',
+        stroke: this.color(i)
+      }))
+      .each(function () {
+        this.__oldData__ = { startAngle: 0, endAngle: 0 }
       })
-      .transition()
-      .ease(d3.easeLinear)
-      .duration(500)
-      .attrTween('d', (pieData, i) => {
-        const originalEnd = pieData.endAngle
-
-        return t => {
-          let currentAng = angleInterpolation[i](t)
-          if (currentAng < pieData.startAngle) {
-            return ''
-          }
-          pieData.endAngle = d3.min([currentAng, originalEnd])
-          vis.arc.innerRadius(pieData.layer * radius).outerRadius(pieData.layer * radius + radius)
-          vis.arc(pieData)
-
-          return ''
-        }
-        // d: vis.arc.innerRadius(d.layer * 20).outerRadius(d.layer * 20 + 20)(d),
+      .merge(enterGroup)
+      .transition(vis.t)
+      .attrTween('d', function (arc, i) {
+        const lerpAngle = vis.storeArc(this, arc)
+        return t => vis.updateRadius(arc, lerpAngle(t))
       })
+      .end()
+  }
+
+  hover({ target: path, target: { __data__: d } }, arc, tween) {
+    const vis = this
+    d3.select(path)
+      .transition(vis.t)
+      .attr(
+        'd',
+        arc
+          .padRadius(d.innerRadius * tween)
+          .innerRadius(d.innerRadius * tween)
+          .outerRadius(d.outerRadius * tween)
+      )
   }
 }
-const data = barcharUpdate()
+let data = barcharUpdate()
 const pieChart = new PieChart(data)
+
+setInterval(() => {
+  data = barcharUpdate()
+  pieChart.wrangleData(data)
+}, 3000)
 
 function barcharUpdate(freq = 10, offset = 2) {
   const data = {}
-  const k = 2
-  const l = 5
+  const k = 1
+  const l = 3
   let i = k
   while (i--) {
     const d = {}
     let j = l
     while (j--) {
-      d[String.fromCharCode(64 + j)] = Math.abs(
-        Math.cos((1 / k) * (i + freq) + (1 * j) / l) * Math.PI * 10 + 10
-      )
+      d[String.fromCharCode(64 + j)] = d3.randomInt(1, 5)()
     }
     data[String.fromCharCode(97 + i)] = d
   }
 
   return data
 }
-
-const b = { a: 5, b: 10, c: 0 }
-const bbb = d3
-  .sort(Object.entries(b), (a, b) => d3.descending(a[1], b[1]))
-  .map(a => Object.fromEntries(new Map([a])))
-
-// this.pie(Object.values(ds)).map((e, blockIndex) => {
-//   console.log(pieIndex, vis.pie.startAngle()(), vis.pie.endAngle()())
-//   const lerp = d3.interpolate(vis.pie.startAngle()(), vis.pie.endAngle()())
-
-//   const path = this.view.append('path')
-//   path
-//     .attrs({
-//       d: this.arc.padRadius(pieIndex * radius)({
-//         innerRadius: pieIndex * radius,
-//         outerRadius: pieIndex * radius + radius - 5,
-
-//         startAngle: e.startAngle,
-//         endAngle: e.endAngle
-//       }),
-//       fill: this.color(blockIndex) + '33',
-//       stroke: this.color(blockIndex)
-//     })
-
-//     .attr('transform', `translate(${this.center})`)
-// })
