@@ -77,10 +77,9 @@ class PieChart {
     const radius = viewBoxMin / 2 / layers
 
     d3.map(generator, (data, index) => {
-      const sum = data.reduce((total, current) => total + current.value, 0)
-      console.log(sum)
+      const tatal = d3.sum(data, d => d.value)
       d3.map(data, d => {
-        d.percentage = Math.round((d.value / sum) * 10000) / 100 + '%'
+        d.percentage = Math.round((d.value / tatal) * 10000) / 100 + '%'
         d.layer = index
         d.innerRadius = radius * index + (index && +20)
         d.outerRadius = radius + index * radius
