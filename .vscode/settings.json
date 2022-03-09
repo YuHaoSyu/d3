@@ -1,0 +1,11 @@
+{
+  "liveServer.settings.port": 80,
+  "liveServer.settings.root": "/",
+  "liveServer.settings.file": "demo",
+  "editor.formatOnSave": true,
+  "prettier.printWidth": 100,
+  "prettier.singleQuote": true,
+  "prettier.semi": false,
+  "prettier.arrowParens": "avoid",
+  "prettier.trailingComma": "none"
+}

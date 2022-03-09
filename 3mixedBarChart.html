@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>d3 Bar Chart</title>
+    <link rel="stylesheet" href="./css/style.css" />
+    <script src="./vendors/d3.js"></script>
+    <script src="./vendors/d3-selection-multi.js"></script>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="row">
+        <div class="col-3">
+          <button type="button" id="Add" class="btn btn-outline-primary">Add</button>
+        </div>
+        <div class="col-3">
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              id="accumulated"
+              name="barchart"
+              type="radio"
+              value="accumulated"
+            />
+            <label class="form-check-label" for="accumulated">Accumulated</label>
+          </div>
+        </div>
+        <div class="col-3">
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              id="stacked"
+              name="barchart"
+              type="radio"
+              value="stacked"
+            />
+            <label class="form-check-label" for="stacked">Stacked</label>
+          </div>
+        </div>
+        <div class="col-3">
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              id="grouped"
+              name="barchart"
+              type="radio"
+              value="grouped"
+            />
+            <label class="form-check-label" for="grouped">Grouped</label>
+          </div>
+        </div>
+        <div class="col-12" id="chart_svg"></div>
+      </div>
+    </div>
+    <script type="module">
+      class MixedBarChart {
+        constructor(ds, args) {
+          const def = {
+            el: '#chart_svg',
+            title: 'Bar Chart',
+            marginTop: 50,
+            marginBottom: 30,
+            marginLeft: 60,
+            marginRight: 30,
+            xLabel: 'xLabel',
+            yLebel: 'yLabel',
+            paddingX: 0,
+            dur: 500,
+            type: 'stacked',
+            height: 600,
+            theme: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40'],
+            get width() {
+              return d3.select(this.el).style('width').split('px')[0] - 30
+            }
+          }
+          const vis = this
+          Object.assign(def, args)
+          Object.assign(vis, def)
+          vis.initVis(vis.el, vis.width, vis.height, vis.marginLeft, vis.marginTop)
+          vis.wrangleData(ds)
+        }
+
+        get t() {
+          return d3.transition().duration(this.dur)
+        }
+
+        get marginX() {
+          return this.marginLeft + this.marginRight
+        }
+
+        get marginY() {
+          return this.marginTop + this.marginBottom
+        }
+
+        initVis(container, width, height, ml, mt) {
+          const vis = this
+          const view = d3
+            .select(container)
+            .append('svg')
+            .attrs({ width, height, 'text-anchor': 'middle' })
+            .append('g')
+            .attr('transform', `translate(${ml},${mt})`)
+          vis.width -= vis.marginX
+          vis.height -= vis.marginY
+          vis.createTitle(view, vis.width)
+          vis.createTicks(view, vis.width, vis.height)
+          vis.createLables(view, vis.width, vis.height)
+          this.view = view
+        }
+
+        createTitle(view, width) {
+          const vis = this
+          view
+            .append('text')
+            .attrs({
+              x: width / 2,
+              'font-size': 20
+            })
+            .text(vis.title)
+        }
+
+        createLables(view, width, height) {
+          const vis = this
+          view
+            .append('text')
+            .attrs({
+              x: -height / 2,
+              y: -vis.marginLeft / 2,
+              'font-size': 18
+            })
+            .text(vis.yLebel)
+            .attr('transform', 'rotate(270)')
+          view
+            .append('text')
+            .attrs({
+              x: width / 2,
+              y: height + vis.marginBottom,
+              'font-size': 18
+            })
+            .text(vis.xLabel)
+        }
+
+        createTicks(view, width, height) {
+          const vis = this
+          vis.xScale = d3
+            .scaleBand()
+            .range([0, width])
+            .paddingInner(vis.paddingX / 2)
+            .paddingOuter(vis.paddingX / 4)
+          vis.yScale = d3.scaleLinear().range([height, 0])
+          vis.color = d3.scaleOrdinal(this.theme)
+
+          vis.xAxis = view.append('g').attr('transform', `translate(${0},${height})`)
+          vis.yAxis = view.append('g')
+        }
+
+        yTickMaxValue(data) {
+          return this.type === 'grouped' ? d3.max(data) : d3.sum(data)
+        }
+
+        updateTicks(xTicks, yTicks, lengends) {
+          const vis = this
+          vis.xScale.domain(xTicks)
+          vis.yScale.domain(yTicks)
+
+          if (vis.type === 'grouped') {
+            const groupWidth = vis.xScale.bandwidth()
+            vis.groupScale = d3
+              .scaleBand()
+              .range([0, groupWidth])
+              .domain(Object.keys(lengends))
+              .paddingInner(vis.paddingX)
+          }
+
+          vis.xAxis.transition(vis.t).call(d3.axisBottom(vis.xScale))
+          vis.yAxis.transition(vis.t).call(d3.axisLeft(vis.yScale))
+        }
+
+        dataConvert(categories) {
+          const vis = this
+          const dataset = Object.values(categories).map(legend => Object.values(legend)) // [[0,0,0], [0,0,0], [0,0,0]]
+          vis.xTicks = Object.keys(categories) // ['a']
+          vis.legends = Object.keys(categories[vis.xTicks[0]]) //['A', 'B', 'C', 'D', 'E']
+
+          const yTicks = [0, d3.max(dataset, vis.yTickMaxValue.bind(vis)) * 1.1]
+          vis.updateTicks(vis.xTicks, yTicks, vis.legends)
+          return dataset
+        }
+
+        wrangleData(ds) {
+          const vis = this
+          const dsConvert = vis.dataConvert(ds)
+
+          const stack = d3.stack().keys(d3.range(vis.legends.length))
+          const series = stack(dsConvert)
+          vis.updateVis(series)
+        }
+
+        barWidth(i) {
+          const vis = this
+          return { x: vis.xScale(vis.xTicks[i]), width: vis.xScale.bandwidth() }
+        }
+
+        barHeight(h = 0, y = 0) {
+          const vis = this
+          return { y: vis.yScale(h), height: vis.yScale(y) - vis.yScale(h) }
+        }
+
+        barColor(i) {
+          const vis = this
+          return { fill: vis.color(i) + '33', stroke: vis.color(i) }
+        }
+
+        barSize(i, d0 = 0, d1 = 0) {
+          const vis = this
+          return { ...vis.barWidth(i), ...vis.barHeight(d0, d1) }
+        }
+
+        accumulated(d0, d1, key, index) {
+          const vis = this
+          return {
+            init: { ...vis.barSize(index), ...vis.barColor(index) },
+            enter: { ...vis.barSize(index, d1, 0), ...vis.barColor(index) }
+          }
+        }
+
+        stacked(d0, d1, key, index) {
+          const vis = this
+          return {
+            init: { ...vis.barSize(index), ...vis.barColor(key) },
+            enter: { ...vis.barHeight(d1, d0), ...vis.barColor(key) },
+            update: { ...vis.barWidth(index) }
+          }
+        }
+
+        grouped(d0, d1, key, index) {
+          const vis = this
+          return {
+            init: {
+              x: vis.xScale(vis.xTicks[index]) + vis.groupScale(key),
+              width: vis.groupScale.bandwidth(),
+              ...vis.barHeight(),
+              ...vis.barColor(key)
+            },
+            enter: {
+              x: vis.xScale(vis.xTicks[index]) + vis.groupScale(key),
+              width: vis.groupScale.bandwidth(),
+              ...vis.barColor(key)
+            },
+            update: { ...vis.barHeight(d1 - d0) }
+          }
+        }
+        animation(el, vis, state) {
+          let { type } = vis
+          el.attrs(([d0, d1, key], index) => vis[type](d0, d1, key, index)[state])
+        }
+        updateVis(data) {
+          const vis = this
+          vis.updateGroup(data)
+
+          const enterGroup = vis.view
+            .selectAll('.enter')
+            .selectAll('rect')
+            .data(d => d)
+
+          enterGroup
+            .enter()
+            .append('rect')
+            .call(vis.animation, vis, 'init')
+            .transition(vis.t)
+            .call(vis.animation, vis, 'enter')
+            .call(vis.animation, vis, 'update')
+
+          enterGroup
+            .transition(vis.t)
+            .call(vis.animation, vis, 'enter')
+            .transition(vis.t)
+            .delay((d, i) => i * 10)
+            .call(vis.animation, vis, 'update')
+
+          const exitGroup = vis.view.selectAll('.exit').selectAll('rect')
+          enterGroup
+            .exit()
+            .merge(exitGroup)
+            .transition(vis.t)
+            .attrs({ ...vis.barHeight() })
+            .remove()
+        }
+
+        updateGroup(categoriesData) {
+          const vis = this
+          categoriesData.forEach(categoryData => {
+            categoryData.forEach(d => d.push(categoryData.key))
+          })
+          const accumulated = categoriesData.slice(-1)
+          const typeData = { accumulated, stacked: categoriesData, grouped: categoriesData }
+          const data = typeData[vis.type]
+
+          vis.groups = vis.view.selectAll('.enter').data(data)
+          vis.groups
+            .enter()
+            .append('g')
+            .attrs(() => ({ class: 'enter' }))
+
+          vis.groups
+            .exit()
+            .attrs({ opacity: 1, class: 'exit' })
+            .transition(vis.t)
+            .attrs({ opacity: 0 })
+            .remove()
+        }
+      }
+
+      let newdata = barcharUpdate((Math.random() * 60) | 0)
+
+      const mixedChart = new MixedBarChart(newdata)
+      d3.select('[value=' + mixedChart.type + ']').attr('checked', true)
+
+      function barcharUpdate(freq = 10, offset = 2) {
+        const data = {}
+        const k = 40
+        const l = 6
+        let i = k
+        while (i--) {
+          const d = {}
+          let j = l
+          while (j--) {
+            d[String.fromCharCode(12073 + j)] = Math.abs(
+              Math.cos((1 / k) * (i + freq) + (1 * j) / l) * Math.PI * 10 + 10
+            )
+          }
+          data[String.fromCharCode(12373 + i)] = d
+        }
+        return data
+      }
+
+      function wangleBarChart(i = 0) {
+        newdata = barcharUpdate((Math.random() * 60) | 0)
+        mixedChart.wrangleData(newdata)
+      }
+
+      Add.addEventListener('click', wangleBarChart)
+
+      d3.selectAll("[name='barchart']").on('change', e => {
+        mixedChart.type = e.target.value
+        mixedChart.wrangleData(newdata)
+      })
+    </script>
+  </body>
+</html>

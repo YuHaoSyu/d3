@@ -1,0 +1,43 @@
+svg {
+  user-select: none;
+}
+circle {
+  opacity: 0;
+  r: 5px;
+  stroke-width: 2px;
+  stroke: steelblue;
+  cursor: pointer;
+  pointer-events: all;
+}
+text {
+  opacity: 0;
+  alignment-baseline: middle;
+  text-anchor: start;
+}
+.hasChildren {
+  text-anchor: end;
+}
+.gLink {
+  fill: none;
+  stroke-opacity: 0.4;
+  stroke-width: 1.5;
+}
+.gNode {
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.update {
+  transition: opacity 1.5s 0.5s;
+}
+.exit {
+  transition: opacity 1.5s;
+}
+
+.enter,
+.exit {
+  opacity: 0;
+}
+.update {
+  opacity: 1;
+}

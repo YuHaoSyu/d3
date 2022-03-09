@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>D3 Data binding</title>
+    <link rel="stylesheet" href="./css/style.css" />
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="./vendors/d3.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row gy-3">
+        <div class="col"><button type="button" class="btn btn-primary" id="get">Get</button></div>
+        <div class="col"><button type="button" class="btn btn-success" id="post">Post</button></div>
+        <div class="col">
+          <button type="button" class="btn btn-danger" id="delete">Delete</button>
+        </div>
+        <div class="col"><button type="button" class="btn btn-warning" id="put">Put</button></div>
+        <div class="col">
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              id="none"
+              name="sort"
+              type="radio"
+              value="none"
+              checked
+            />
+            <label class="form-check-label" for="none">&times;</label>
+          </div>
+        </div>
+        <div class="col">
+          <div class="form-check">
+            <input class="form-check-input" id="asc" name="sort" type="radio" value="ascending" />
+            <label class="form-check-label" for="asc">↑</label>
+          </div>
+        </div>
+        <div class="col">
+          <div class="form-check">
+            <input class="form-check-input" id="des" name="sort" type="radio" value="descending" />
+            <label class="form-check-label" for="des">↓</label>
+          </div>
+        </div>
+        <div class="col-12">
+          <svg id="chart_svg" width="100%" height="200"></svg>
+        </div>
+      </div>
+    </div>
+    <script>
+      const svg = d3
+        .select('#chart_svg')
+        .append('svg')
+        .attr('width', innerWidth - 40)
+        .attr('height', 800)
+
+      function cx(data, i) {
+        function calcCx(total, current, di) {
+          if (i <= di) return total
+
+          total.val += current.val
+          return total
+        }
+        const offsetX = data.reduce(calcCx, { val: 0 })
+        return offsetX.val * 2 + data[i].val
+      }
+
+      function translate(el, data, cx) {
+        const maxValue = d3.max(data, d => d.val)
+        el.attr('cx', cx).attr('cy', maxValue)
+      }
+
+      function draw(ds) {
+        //* binding
+        const circles = svg.selectAll('circle').data(ds)
+
+        //* update
+        circles
+          .transition()
+          .duration(500)
+          .attr('r', d => d.val)
+          .attr('fill', d => `hsl(240,${d.val}%,50%)`)
+          .call(translate, ds, (d, i) => cx(ds, i))
+        //* exit
+
+        circles
+          .exit()
+          .transition()
+          .duration(500)
+          .attr('r', 0)
+          .attr('fill', d => `hsl(120,${d.val}%,50%)`)
+          .remove()
+
+        //* enter
+        circles
+          .enter()
+          .append('circle')
+          .attr('fill', d => `hsl(0,${d.val}%,50%)`)
+          .call(translate, ds, (d, i) => cx(ds, i))
+          .transition()
+          .duration(500)
+          .attr('r', (d, i) => d.val)
+      }
+      const ajaxData = {
+        items: [],
+        ids: [],
+        url: 'http://localhost:3000/posts',
+        randBetween(a, b) {
+          return Math.floor(Math.random() * (Math.max(a, b) - Math.min(a, b) + 1)) + Math.min(a, b)
+        },
+        activeId() {
+          const id = this.randBetween(0, this.ids.length - 1)
+          return this.url + '/' + this.ids[id]
+        },
+        sendData() {
+          return { val: this.randBetween(10, 50) }
+        },
+        sorting() {
+          const sorted = [...this.items]
+          const actions = {
+            none() {
+              return false
+            },
+            ascending() {
+              d3.sort(sorted, (a, b) => d3.ascending(a.val, b.val))
+            },
+            descending() {
+              d3.sort(sorted, (a, b) => d3.descending(a.val, b.val))
+            }
+          }
+          const sortType = d3.select("[name='sort']:checked").attr('value')
+          actions[sortType]()
+          draw(sorted)
+        },
+
+        async get() {
+          try {
+            const data = await axios.get(this.url)
+            this.items = data.data
+            this.ids = this.items.map(({ id }) => id)
+            this.sorting()
+          } catch (e) {
+            console.log(e)
+          }
+        },
+        async post() {
+          try {
+            let times = this.randBetween(1, 5)
+            while (times--) {
+              await axios.post(this.url, this.sendData())
+            }
+          } catch (e) {
+            console.log(e)
+          }
+          this.get()
+        },
+        async delete() {
+          try {
+            let times = this.randBetween(0, this.ids.length - 1)
+            while (times--) {
+              await axios.delete(this.activeId())
+            }
+          } catch (e) {
+            console.log(e)
+          }
+          this.get()
+        },
+        async put() {
+          try {
+            await axios.put(this.activeId(), this.sendData())
+          } catch (e) {
+            console.log(e)
+          }
+          this.get()
+        }
+      }
+
+      d3.select('#get').on('click', ajaxData.get.bind(ajaxData))
+      d3.select('#post').on('click', ajaxData.post.bind(ajaxData))
+      d3.select('#delete').on('click', ajaxData.delete.bind(ajaxData))
+      d3.select('#put').on('click', ajaxData.put.bind(ajaxData))
+      d3.selectAll("[name='sort']").on('change', ajaxData.sorting.bind(ajaxData))
+    </script>
+  </body>
+</html>
