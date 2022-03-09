@@ -40,8 +40,8 @@ class PieChart {
     return [this.width, this.height]
   }
 
-  get center() {
-    return d3.map(this.viewport, b => b / 2)
+  center(offset = [0, 0]) {
+    return d3.map(this.viewport, (b, i) => b / 2 + offset[i])
   }
 
   initVis(container, width, height, ml, mt) {
@@ -76,23 +76,22 @@ class PieChart {
     const layers = generator.length
     const radius = viewBoxMin / 2 / layers
 
-    d3.map(generator, (data, index) =>
+    d3.map(generator, (data, index) => {
+      const sum = data.reduce((total, current) => total + current.value, 0)
+      console.log(sum)
       d3.map(data, d => {
+        d.percentage = Math.round((d.value / sum) * 10000) / 100 + '%'
         d.layer = index
-        d.innerRadius = radius * index + (index && +30)
+        d.innerRadius = radius * index + (index && +20)
         d.outerRadius = radius + index * radius
         return d
       })
-    )
+    })
 
     vis.updateVis(values, generator).then(() => {
       d3.selectAll('.enterPath')
-        .on('mouseenter', e => {
-          vis.hover(e, vis.arc, 1.1)
-        })
-        .on('mouseleave', e => {
-          vis.hover(e, vis.arc, 1)
-        })
+        .on('mouseenter', e => vis.hover(e, vis.arc, 1.1))
+        .on('mouseleave', e => vis.hover(e, vis.arc, 1))
         .attr('class', '')
     })
   }
@@ -114,12 +113,12 @@ class PieChart {
       )
   }
 
-  updateRadius({ innerRadius, outerRadius }, lerp) {
+  updateRadius({ innerRadius, outerRadius }) {
     const vis = this
     return vis.arc
       .padRadius(innerRadius)
       .innerRadius(innerRadius)
-      .outerRadius(outerRadius)(lerp)
+      .outerRadius(outerRadius)
   }
 
   storeArc(el, transArc) {
@@ -133,30 +132,45 @@ class PieChart {
 
     vis.updateGroup(pieGenerators)
 
-    const enterGroup = vis.view
+    const enterPath = vis.view
       .selectAll('.enter')
       .selectAll('path')
       .data(d => d)
 
-    await enterGroup
+    await enterPath
       .enter()
       .append('path')
       .attrs((d, i) => ({
         class: 'enterPath',
-        transform: `translate(${this.center})`,
+        transform: `translate(${this.center()})`,
         fill: this.color(i) + '33',
         stroke: this.color(i)
       }))
       .each(function () {
         this.__oldData__ = { startAngle: 0, endAngle: 0 }
       })
-      .merge(enterGroup)
+      .merge(enterPath)
       .transition(vis.t)
       .attrTween('d', function (arc, i) {
         const lerpAngle = vis.storeArc(this, arc)
-        return t => vis.updateRadius(arc, lerpAngle(t))
+        return t => vis.updateRadius(arc)(lerpAngle(t))
       })
       .end()
+
+    const enterText = vis.view
+      .selectAll('.enter')
+      .selectAll('text')
+      .data(d => d)
+
+    enterText
+      .enter()
+      .append('text')
+      .merge(enterText)
+      .text(d => d.percentage)
+      .attrs({
+        fill: (d, i) => vis.color(i),
+        transform: d => `translate(${vis.center(vis.updateRadius(d).centroid(d))})`
+      })
   }
 
   hover({ target: path, target: { __data__: d } }, arc, tween) {
@@ -182,12 +196,12 @@ setInterval(() => {
 
 function barcharUpdate(freq = 10, offset = 2) {
   const data = {}
-  const k = 1
+  const k = 3
   const l = 3
   let i = k
   while (i--) {
     const d = {}
-    let j = l
+    let j = i + 2
     while (j--) {
       d[String.fromCharCode(64 + j)] = d3.randomInt(1, 5)()
     }

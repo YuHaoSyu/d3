@@ -1,5 +1,4 @@
-{
-  "liveServer.settings.port": 80,
+ { "liveServer.settings.port": 80,
   "liveServer.settings.root": "/",
   "liveServer.settings.file": "demo",
   "editor.formatOnSave": true,
