@@ -87,7 +87,7 @@
             .outerRadius(d => d.outerRadius)
             .padAngle(Math.PI / 60)
           vis.pie = d3.pie()
-          vis.color = d3.scaleOrdinal(vis.theme)
+          vis.color = d3.scaleOrdinal().range(vis.theme)
         }
 
         wrangleData(ds) {

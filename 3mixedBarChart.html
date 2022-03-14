@@ -14,7 +14,7 @@
     <div class="container">
       <div class="row">
         <div class="col-3">
-          <button type="button" id="Add" class="btn btn-outline-primary">Add</button>
+          <button type="button" id="Add" class="btn btn-outline-primary">Renew</button>
         </div>
         <div class="col-3">
           <div class="form-check">
@@ -67,7 +67,7 @@
             marginRight: 30,
             xLabel: 'xLabel',
             yLebel: 'yLabel',
-            paddingX: 0,
+            paddingX: 0.5,
             dur: 500,
             type: 'stacked',
             height: 600,
@@ -145,13 +145,10 @@
 
         createTicks(view, width, height) {
           const vis = this
-          vis.xScale = d3
-            .scaleBand()
-            .range([0, width])
-            .paddingInner(vis.paddingX / 2)
-            .paddingOuter(vis.paddingX / 4)
+          vis.xScale = d3.scaleBand().range([0, width])
+
           vis.yScale = d3.scaleLinear().range([height, 0])
-          vis.color = d3.scaleOrdinal(this.theme)
+          vis.color = d3.scaleOrdinal().range(this.theme)
 
           vis.xAxis = view.append('g').attr('transform', `translate(${0},${height})`)
           vis.yAxis = view.append('g')
@@ -167,12 +164,16 @@
           vis.yScale.domain(yTicks)
 
           if (vis.type === 'grouped') {
+            vis.xScale.padding(vis.paddingX / 4).paddingOuter(vis.paddingX / 4)
             const groupWidth = vis.xScale.bandwidth()
             vis.groupScale = d3
               .scaleBand()
               .range([0, groupWidth])
               .domain(Object.keys(lengends))
               .paddingInner(vis.paddingX)
+              .paddingOuter(-vis.paddingX / 4)
+          } else {
+            vis.xScale.paddingInner(vis.paddingX).paddingOuter(vis.paddingX / 2)
           }
 
           vis.xAxis.transition(vis.t).call(d3.axisBottom(vis.xScale))
@@ -296,7 +297,11 @@
             categoryData.forEach(d => d.push(categoryData.key))
           })
           const accumulated = categoriesData.slice(-1)
-          const typeData = { accumulated, stacked: categoriesData, grouped: categoriesData }
+          const typeData = {
+            accumulated,
+            stacked: categoriesData,
+            grouped: categoriesData
+          }
           const data = typeData[vis.type]
 
           vis.groups = vis.view.selectAll('.enter').data(data)
