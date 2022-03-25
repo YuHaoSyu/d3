@@ -3,7 +3,7 @@
     height = 600,
     radius = Math.min(width, height) / 6
 
-  const color = d3.scaleOrdinal(d3.quantize(d3.interpolateRainbow, 27))
+  const color = d3.scaleOrdinal(d3.schemePastel1)
 
   function partition(data) {
     const root = d3
@@ -25,7 +25,7 @@
   const format = d3.format(',d')
 
   // Parses json to build and renders
-  // render(data)
+  render(randomData)
 
   function render(data) {
     const root = partition(data)
@@ -35,7 +35,7 @@
     const svg = d3
       .select('#chart_svg')
       .append('svg:svg')
-      //.attr('viewBox', [0, 0, width, height])
+      .attr('viewBox', [0, 0, width, height])
       .attr('width', width)
       .attr('height', height)
       .style('font', '8px sans-serif')
@@ -48,8 +48,9 @@
       .data(root.descendants().slice(1))
       .join('path')
       .attr('fill', d => {
-        while (d.depth > 1) d = d.parent
-        return color(d.data.name)
+        // console.log(d)
+        if (d.depth > 1) d = d.parent
+        return color(d.data.label)
       })
       .attr('fill-opacity', d => (arcVisible(d.current) ? (d.children ? 0.6 : 0.4) : 0))
       .attr('d', d => arc(d.current))
@@ -59,14 +60,7 @@
       .style('cursor', 'pointer')
       .on('click', clicked)
 
-    path.append('title').text(
-      d =>
-        `${d
-          .ancestors()
-          .map(d => d.data.name)
-          .reverse()
-          .join('/')}\n${format(d.value)}`
-    )
+    path.append('title').text(d => `${d.ancestors().map(d => d.data.label)}`)
 
     const ctext = g.append('g')
     ctext
@@ -87,7 +81,7 @@
       .attr('dy', '0.35em')
       .attr('fill-opacity', d => +labelVisible(d.current))
       .attr('transform', d => labelTransform(d.current))
-      .text(d => d.data.name)
+      .text(d => d.data.label)
 
     const parent = g
       .append('circle')
@@ -99,16 +93,18 @@
 
     function clicked(event, p) {
       parent.datum(p.parent || root)
-
-      root.each(
-        d =>
-          (d.target = {
-            x0: Math.max(0, Math.min(1, (d.x0 - p.x0) / (p.x1 - p.x0))) * 2 * Math.PI,
-            x1: Math.max(0, Math.min(1, (d.x1 - p.x0) / (p.x1 - p.x0))) * 2 * Math.PI,
-            y0: Math.max(0, d.y0 - p.depth),
-            y1: Math.max(0, d.y1 - p.depth)
-          })
-      )
+      const { x0: p0, depth } = p
+      const deltaX = p.x1 - p.x0
+      const turn = 2 * Math.PI
+      root.each(d => {
+        const { x0, x1, y0, y1 } = d
+        return (d.target = {
+          x0: Math.max(0, Math.min(1, (x0 - p0) / deltaX)) * turn,
+          x1: Math.max(0, Math.min(1, (x1 - p0) / deltaX)) * turn,
+          y0: Math.max(0, y0 - depth),
+          y1: Math.max(0, y1 - depth)
+        })
+      })
 
       const t = g.transition().duration(750)
 
@@ -135,17 +131,17 @@
       ctext.selectAll('text').transition(t).text(p.data.name)
     }
 
-    function arcVisible(d) {
-      return d.y1 <= 3 && d.y0 >= 1 && d.x1 > d.x0
+    function arcVisible({ x0, x1, y0, y1 }) {
+      return y1 <= 3 && y0 >= 1 && x1 > x0
     }
 
-    function labelVisible(d) {
-      return d.y1 <= 3 && d.y0 >= 1 && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.03
+    function labelVisible({ x0, x1, y0, y1 }) {
+      return y1 <= 3 && y0 >= 1 && (y1 - y0) * (x1 - x0) > 0.03
     }
 
-    function labelTransform(d) {
-      const x = (((d.x0 + d.x1) / 2) * 180) / Math.PI
-      const y = ((d.y0 + d.y1) / 2) * radius
+    function labelTransform({ x0, x1, y0, y1 }) {
+      const x = ((x0 + x1) * 90) / Math.PI
+      const y = ((y0 + y1) / 2) * radius
       return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`
     }
   }
