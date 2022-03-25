@@ -30,7 +30,7 @@
             marginRight: 30,
             innerRadius: 0,
             outerRadius: 100,
-            dur: 1000,
+            dur: 500,
             type: 'pie',
             height: 600,
             theme: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40'],
@@ -112,23 +112,27 @@
 
           vis.updateVis(values, generator).then(() => {
             d3.selectAll('.enterPath')
-              .on('mouseenter', e => vis.hover(e, vis.arc, 1.1))
+              .on('mouseenter', (e, i) => {
+                vis.hover(e, vis.arc, 1.1)
+              })
               .on('mouseleave', e => vis.hover(e, vis.arc, 1))
-              .attr('class', '')
+              .classed('enterPath', false)
           })
         }
 
         updateGroup(datum) {
+          console.log(datum)
           const vis = this
           vis.groups = vis.view
             .selectAll('.enter')
             .data(datum)
             .join(
-              enter => enter.append('g').attrs(() => ({ class: 'enter' })),
+              enter => enter.append('g').classed('enter', true),
               update => update,
               exit =>
                 exit
-                  .attrs({ opacity: 1, class: 'exit' })
+                  .attrs({ opacity: 1 })
+                  .classed('exit', true)
                   .transition(vis.t)
                   .attrs({ opacity: 0 })
                   .remove()
@@ -158,12 +162,11 @@
               els[i].__cache__ = { startAngle: 0, endAngle: 0 }
             })
             .attrs((d, i) => ({
-              class: 'enterPath',
               transform: `translate(${this.center()})`,
               fill: this.color(i) + '33',
               stroke: this.color(i)
             }))
-
+            .classed('enterPath', true)
             .merge(enterPath)
             .transition(vis.t)
             .attrTween('d', (arc, i, els) => {
@@ -188,7 +191,7 @@
             })
         }
 
-        hover({ target: path, target: { __data__: d } }, arc, tween) {
+        hover({ target: path }, arc, tween) {
           const vis = this
           d3.select(path)
             .transition(vis.t)
@@ -204,10 +207,10 @@
       let data = barcharUpdate()
       const pieChart = new PieChart(data)
 
-      setInterval(() => {
-        data = barcharUpdate()
-        pieChart.wrangleData(data)
-      }, 5000)
+      // setInterval(() => {
+      //   data = barcharUpdate()
+      //   pieChart.wrangleData(data)
+      // }, 3000)
 
       function barcharUpdate(freq = 10, offset = 2) {
         const data = {}
