@@ -48,17 +48,10 @@ class Sunburst {
     vis.width -= vis.marginX
     vis.height -= vis.marginY
     vis.radius = d3.min([width, height]) / 2
+
     vis.createArc()
     vis.view = view
   }
-  wrangleData(ds) {
-    const root = d3.hierarchy(ds).sum(d => d.value)
-    const partition = d3.partition().size([2 * Math.PI, 6])
-    const data = partition(root)
-    console.log(data)
-    this.updateVis(data)
-  }
-  generator(ds) {}
   createArc() {
     const vis = this
     vis.arc = d3
@@ -66,67 +59,127 @@ class Sunburst {
       .startAngle(d => d.x0)
       .endAngle(d => d.x1)
       .innerRadius(d => (d.y0 * vis.radius) / 3)
-      .outerRadius(d => {
-        return Math.max(d.y0 * vis.radius, d.y1 * vis.radius - 10) / 3
-      })
+      .outerRadius(d => Math.max(d.y0 * vis.radius, d.y1 * vis.radius - 10) / 3)
+  }
+  wrangleData(ds) {
+    const root = d3.hierarchy(ds).sum(d => d.value)
+    const partition = d3.partition().size([2 * Math.PI, 6])
+    const data = partition(root)
+    const labels = [ds.label]
+
+    Object.values(ds.children).forEach(v => labels.push(v.label))
     d3.schemePastel1.unshift('transparent')
-    vis.color = d3
-      .scaleOrdinal()
-      .domain(['root', 'A', 'B', 'C', 'D', 'E'])
-      .range(d3.schemePastel1)
+    this.color = d3.scaleOrdinal().domain(labels).range(d3.schemePastel1)
+    this.updateVis(data)
   }
 
   updateVis(datum) {
-    const vis = this
-    // console.log(datum)
-    const pathGroup = vis.view.selectAll('.root').data(datum.children)
-    pathGroup
-      .enter()
+    const root = partition(datum)
+
+    root.each(d => (d.current = d))
+
+    const path = g
       .append('g')
-      .attr('transform', `translate(${[vis.width, vis.height].map(d => d / 2)})`)
-      .attr('class', d => 'root label-' + d.data.label)
-
-    const paths = vis.view
-      .selectAll('.root')
       .selectAll('path')
-      .data(d => d)
-
-    paths
-      .enter()
-      .append('path')
-      .filter((d, el) => d.depth < vis.showDepth)
-      .attrs((d, i) => {
-        // console.log(d.data.label)
-        const classlist = 'depth-' + d.depth + ' label-' + d.data.label
-
-        if (d.depth > vis.showDepth) return { class: classlist }
-        return {
-          class: classlist,
-          d: vis.arc(d),
-          stroke: vis.color(d.data.label),
-          fill: vis.color(d.data.label),
-          'fill-opacity': ((10 - d.depth * 2) | 0) / 10
-        }
+      .data(root.descendants().slice(1))
+      .join('path')
+      .attr('fill', d => {
+        if (d.depth > 1) d = d.parent
+        return color(d.data.label)
       })
+      .attr('fill-opacity', d => (arcVisible(d.current) ? (d.children ? 0.6 : 0.4) : 0))
+      .attr('d', d => arc(d.current))
 
-      .on('click', vis.clickHandler.bind(this))
+    path
+      .filter(d => d.children)
+      .style('cursor', 'pointer')
+      .on('click', clicked)
 
-    paths.attrs((d, i) => {
-      // console.log(d, i)
-      return {
-        d: vis.arc(d),
-        stroke: vis.color(d.data.label),
-        fill: vis.color(d.data.label),
-        'fill-opacity': ((10 - d.depth * 2) | 0) / 10
-      }
-    })
+    path.append('title').text(d => `${d.ancestors().map(d => d.data.label)}`)
+
+    const ctext = g.append('g')
+    ctext
+      .append('text')
+      .attr('text-anchor', 'middle')
+      .style('font', '14px sans-serif')
+      .style('font-weight', 'bold')
+      .text(root.current.data.name)
+
+    const label = g
+      .append('g')
+      .attr('pointer-events', 'none')
+      .attr('text-anchor', 'middle')
+      .attr('user-select', 'none')
+      .selectAll('text')
+      .data(root.descendants().slice(1))
+      .join('text')
+      .attr('dy', '0.35em')
+      .attr('fill-opacity', d => +labelVisible(d.current))
+      .attr('transform', d => labelTransform(d.current))
+      .text(d => d.data.label)
+
+    const parent = g
+      .append('circle')
+      .datum(root)
+      .attr('r', radius)
+      .attr('fill', 'none')
+      .attr('pointer-events', 'all')
+      .on('click', clicked)
   }
-  clickHandler(e, node) {
-    console.log(node)
-    const vis = this
-    vis.showDepth = node.depth
-    vis.wrangleData(node.data)
+
+  clickHandler(event, p) {
+    parent.datum(p.parent || root)
+    const { x0: p0, depth } = p
+    const deltaX = p.x1 - p.x0
+
+    root.each(d => {
+      const { x0, x1, y0, y1 } = d
+      return (d.target = {
+        x0: Math.max(0, Math.min(1, (x0 - p0) / deltaX)) * turn,
+        x1: Math.max(0, Math.min(1, (x1 - p0) / deltaX)) * turn,
+        y0: Math.max(0, y0 - depth),
+        y1: Math.max(0, y1 - depth)
+      })
+    })
+
+    path
+      .transition()
+      .duration(750)
+      .tween('data', d => {
+        const i = d3.interpolate(d.current, d.target)
+        return t => (d.current = i(t))
+      })
+      .filter(function (d) {
+        return +this.getAttribute('fill-opacity') || arcVisible(d.target)
+      })
+      .attr('fill-opacity', d => (arcVisible(d.target) ? (d.children ? 0.6 : 0.4) : 0))
+      .attrTween('d', d => () => arc(d.current))
+
+    label
+      .filter(function (d) {
+        return +this.getAttribute('fill-opacity') || labelVisible(d.target)
+      })
+      .transition()
+      .duration(750)
+      .attr('fill-opacity', d => +labelVisible(d.target))
+      .attrTween('transform', d => () => labelTransform(d.current))
+
+    ctext.selectAll('text').transition().duration(750).text(p.data.name)
+  }
+
+  arcVisible({ x0, x1, y0, y1 }) {
+    return y1 <= 3 && y0 >= 1 && x1 > x0
+  }
+
+  labelVisible({ x0, x1, y0, y1 }) {
+    return y1 <= 3 && y0 >= 1 && (y1 - y0) * (x1 - x0) > 0.03
+  }
+
+  labelTransform({ x0, x1, y0, y1 }) {
+    const x = ((x0 + x1) * 90) / Math.PI
+    const y = ((y0 + y1) / 2) * radius
+    return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`
   }
 }
 
-const sunburst = new Sunburst(randomData)
+// const sunburst = new Sunburst(randomData)
