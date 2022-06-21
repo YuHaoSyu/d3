@@ -79,7 +79,7 @@
           const vis = this
           Object.assign(def, args)
           Object.assign(vis, def)
-          vis.initVis(vis.el, vis.width, vis.height, vis.marginLeft, vis.marginTop)
+          this.view = vis.initVis(vis)
           vis.wrangleData(ds)
         }
 
@@ -95,8 +95,8 @@
           return this.marginTop + this.marginBottom
         }
 
-        initVis(container, width, height, ml, mt) {
-          const vis = this
+        initVis(vis) {
+          const { el: container, width, height, marginLeft: ml, marginTop: mt } = vis
           const view = d3
             .select(container)
             .append('svg')
@@ -108,7 +108,7 @@
           vis.createTitle(view, vis.width)
           vis.createTicks(view, vis.width, vis.height)
           vis.createLables(view, vis.width, vis.height)
-          this.view = view
+          return view
         }
 
         createTitle(view, width) {
@@ -120,6 +120,17 @@
               'font-size': 20
             })
             .text(vis.title)
+        }
+
+        createTicks(view, width, height) {
+          const vis = this
+          vis.xScale = d3.scaleBand().range([0, width])
+
+          vis.yScale = d3.scaleLinear().range([height, 0])
+          vis.color = d3.scaleOrdinal().range(this.theme)
+
+          vis.xAxis = view.append('g').attr('transform', `translate(${0},${height})`)
+          vis.yAxis = view.append('g')
         }
 
         createLables(view, width, height) {
@@ -141,17 +152,6 @@
               'font-size': 18
             })
             .text(vis.xLabel)
-        }
-
-        createTicks(view, width, height) {
-          const vis = this
-          vis.xScale = d3.scaleBand().range([0, width])
-
-          vis.yScale = d3.scaleLinear().range([height, 0])
-          vis.color = d3.scaleOrdinal().range(this.theme)
-
-          vis.xAxis = view.append('g').attr('transform', `translate(${0},${height})`)
-          vis.yAxis = view.append('g')
         }
 
         yTickMaxValue(data) {
@@ -255,7 +255,7 @@
           }
         }
         animation(el, vis, state) {
-          let { type } = vis
+          const { type } = vis
           el.attrs(([d0, d1, key], index) => vis[type](d0, d1, key, index)[state])
         }
         updateVis(data) {
