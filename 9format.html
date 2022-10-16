@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>D3 Format</title>
+    <script src="./vendors/d3.js"></script>
+    <script src="./vendors/d3-selection-multi.js"></script>
+    <link rel="stylesheet" href="./css/style.css" />
+    <link rel="icon" href="./img/favicon.ico" type="image/ico" />
+  </head>
+  <body>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Specifier</th>
+          <th>1000</th>
+          <th>10</th>
+          <th>1</th>
+          <th>0.1</th>
+          <th>0.0001</th>
+          <th>-10</th>
+          <th>-0.001</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <script>
+      function format(specifier) {
+        function insertBeforeend(html) {
+          tr.insertAdjacentHTML('beforeend', html)
+        }
+        const tbody = document.querySelector('tbody')
+        const tr = document.createElement('tr')
+        tbody.append(tr)
+
+        insertBeforeend(`<td>${specifier}</td>`)
+
+        const fn = d3.format(specifier)
+        return function convert(value) {
+          // console.log(fn(value).replace(/\s/g, '&nbsp;'))
+          insertBeforeend(`<td>${fn(value).replace(/\s/g, '&nbsp;')}</td>`)
+          return convert
+        }
+      }
+      format('e')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('.9g')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('9g')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('.3f')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('6f')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('d')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('6d')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('5r')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('.5r')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('%')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('3%')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('.3%')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('p')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('3p')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('.3p')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('b')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('o')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('x')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('X')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('c')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('s')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('10s')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('.5s')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format(',')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('$')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('_<9')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('_>9')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('_^9')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('_=9')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('-')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('+')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('(')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format('')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+      format(' ')(1000)(10)(1)(0.1)(0.0001)(-10)(-0.001)
+    </script>
+  </body>
+</html>

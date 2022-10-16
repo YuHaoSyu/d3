@@ -8,16 +8,23 @@
     <link rel="stylesheet" href="./css/style.css" />
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <script src="./vendors/d3.js"></script>
+    <link rel="icon" href="./img/favicon.ico" type="image/ico">
   </head>
   <body>
-    <div class="container">
+    <div class="container-fluid">
       <div class="row gy-3">
-        <div class="col"><button type="button" class="btn btn-primary" id="get">Get</button></div>
-        <div class="col"><button type="button" class="btn btn-success" id="post">Post</button></div>
+        <div class="col">
+          <button type="button" class="btn btn-primary" id="get">Get</button>
+        </div>
+        <div class="col">
+          <button type="button" class="btn btn-success" id="post">Post</button>
+        </div>
         <div class="col">
           <button type="button" class="btn btn-danger" id="delete">Delete</button>
         </div>
-        <div class="col"><button type="button" class="btn btn-warning" id="put">Put</button></div>
+        <div class="col">
+          <button type="button" class="btn btn-warning" id="put">Put</button>
+        </div>
         <div class="col">
           <div class="form-check">
             <input
@@ -33,13 +40,25 @@
         </div>
         <div class="col">
           <div class="form-check">
-            <input class="form-check-input" id="asc" name="sort" type="radio" value="ascending" />
+            <input
+              class="form-check-input"
+              id="asc"
+              name="sort"
+              type="radio"
+              value="ascending"
+            />
             <label class="form-check-label" for="asc">↑</label>
           </div>
         </div>
         <div class="col">
           <div class="form-check">
-            <input class="form-check-input" id="des" name="sort" type="radio" value="descending" />
+            <input
+              class="form-check-input"
+              id="des"
+              name="sort"
+              type="radio"
+              value="descending"
+            />
             <label class="form-check-label" for="des">↓</label>
           </div>
         </div>
@@ -105,9 +124,12 @@
       const ajaxData = {
         items: [],
         ids: [],
-        url: 'http://localhost:3000/posts',
+        url: 'http://localhost:3000/d3data',
         randBetween(a, b) {
-          return Math.floor(Math.random() * (Math.max(a, b) - Math.min(a, b) + 1)) + Math.min(a, b)
+          return (
+            Math.floor(Math.random() * (Math.max(a, b) - Math.min(a, b) + 1)) +
+            Math.min(a, b)
+          )
         },
         activeId() {
           const id = this.randBetween(0, this.ids.length - 1)
@@ -117,21 +139,20 @@
           return { val: this.randBetween(10, 50) }
         },
         sorting() {
-          const sorted = [...this.items]
+          const sorted = this.items
           const actions = {
             none() {
-              return false
+              return sorted
             },
             ascending() {
-              d3.sort(sorted, (a, b) => d3.ascending(a.val, b.val))
+              return d3.sort(sorted, (a, b) => d3.ascending(a.val, b.val))
             },
             descending() {
-              d3.sort(sorted, (a, b) => d3.descending(a.val, b.val))
+              return d3.sort(sorted, (a, b) => d3.descending(a.val, b.val))
             }
           }
           const sortType = d3.select("[name='sort']:checked").attr('value')
-          actions[sortType]()
-          draw(sorted)
+          draw(actions[sortType]())
         },
 
         async get() {

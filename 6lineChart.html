@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>d3 Line Chart</title>
+    <link rel="stylesheet" href="./css/style.css" />
+    <script src="./vendors/d3.js"></script>
+    <script src="./vendors/d3-selection-multi.js"></script>
+    <link rel="icon" href="./img/favicon.ico" type="image/ico" />
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="row gy-1">
+        <div class="col-6 col-lg-3">
+          <select class="form-select" name="curves" id="curves">
+            <option value="curveBasis" selected>curveBasis</option>
+            <option value="curveBasisClosed">curveBasisClosed</option>
+            <option value="curveBasisOpen">curveBasisOpen</option>
+            <option value="curveBundle">curveBundle</option>
+            <option value="curveCardinal">curveCardinal</option>
+            <option value="curveCardinalClosed">curveCardinalClosed</option>
+            <option value="curveCardinalOpen">curveCardinalOpen</option>
+            <option value="curveCatmullRom">curveCatmullRom</option>
+            <option value="curveCatmullRomClosed">curveCatmullRomClosed</option>
+            <option value="curveCatmullRomOpen">curveCatmullRomOpen</option>
+            <option value="curveLinear">curveLinear</option>
+            <option value="curveLinearClosed">curveLinearClosed</option>
+            <option value="curveMonotoneX">curveMonotoneX</option>
+            <option value="curveMonotoneY">curveMonotoneY</option>
+            <option value="curveNatural">curveNatural</option>
+            <option value="curveStep">curveStep</option>
+            <option value="curveStepAfter">curveStepAfter</option>
+            <option value="curveStepBefore">curveStepBefore</option>
+          </select>
+        </div>
+        <div class="col-6 col-lg-3">
+          <input type="text" class="form-control" placeholder="beta" />
+        </div>
+        <div class="col-6 col-lg-3">
+          <input type="text" class="form-control" placeholder="tension" />
+        </div>
+        <div class="col-6 col-lg-3">
+          <input type="text" class="form-control" placeholder="alpha" />
+        </div>
+        <div class="col-12" id="chart_svg"></div>
+      </div>
+    </div>
+
+    <script src="./_throttle.js"></script>
+    <script src="./Label.js"></script>
+    <script src="./Title.js"></script>
+    <script src="./Grid.js"></script>
+    <script src="./Crosshair.js"></script>
+    <script src="./6lineChart.js"></script>
+    <script src="./6Interacter.js"></script>
+    <script>
+      function linecharUpdate(freq = 2, offset = 0) {
+        const data = {}
+        const k = 100
+        const l = 6
+        let i = k
+        const time = new Date()
+        let wave = 0
+        const radians = Math.PI / 180
+        const randAng = Math.round(Math.random() * 360)
+        while (i--) {
+          const d = {}
+          let j = l
+          wave += i / 4
+          while (j--) {
+            d[String.fromCharCode(65 + j)] =
+              Math.sin((i + randAng) * radians * freq + j * offset) * (1 + wave)
+          }
+          data[time.setDate(time.getDate() + 7)] = d
+        }
+        return data
+      }
+      let newdata = linecharUpdate(2, 0.25)
+      const lineChart = new LineChart(newdata)
+      new Label(lineChart)
+      new Title(lineChart)
+      new Grid(lineChart).horizontal().vertical()
+      new Crosshair(lineChart)
+      const lineChartInteracter = new Interacter(lineChart, newdata)
+      d3.select('[name="curves"]').on('change', e => {
+        lineChart.curve = e.target.value
+
+        lineChart.wrangleData(newdata)
+      })
+    </script>
+  </body>
+</html>

@@ -8,13 +8,11 @@
     <link rel="stylesheet" href="./css/style.css" />
     <script src="./vendors/d3.js"></script>
     <script src="./vendors/d3-selection-multi.js"></script>
+    <link rel="icon" href="./img/favicon.ico" type="image/ico" />
   </head>
   <body>
     <div class="container">
       <div class="row">
-        <div class="col-4"></div>
-        <div class="col-4"></div>
-        <div class="col-4"></div>
         <div class="col-12" id="chart_svg"></div>
       </div>
     </div>
@@ -29,10 +27,11 @@
             marginLeft: 60,
             marginRight: 30,
             innerRadius: 0,
-            outerRadius: 100,
+            outerRadius: 200,
+            gutters: 20,
             dur: 500,
             type: 'pie',
-            height: 600,
+            height: innerWidth,
             theme: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40'],
             get width() {
               return d3.select(this.el).style('width').split('px')[0] - 30
@@ -41,7 +40,13 @@
           const vis = this
           Object.assign(def, args)
           Object.assign(vis, def)
-          vis.initVis(vis.el, vis.width, vis.height, vis.marginLeft, vis.marginTop)
+          vis.view = vis.initVis(
+            vis.el,
+            vis.width,
+            vis.height,
+            vis.marginLeft,
+            vis.marginTop
+          )
           vis.wrangleData(ds)
         }
 
@@ -75,53 +80,61 @@
             .attr('transform', `translate(${ml},${mt})`)
           vis.width -= vis.marginX
           vis.height -= vis.marginY
-          vis.createArc()
-          vis.view = view
+          vis.color = d3.scaleOrdinal().range(vis.theme)
+          return view
         }
-        createArc() {
+        get generateArc() {
           const vis = this
-          vis.arc = d3
+          const arc = d3
             .arc()
             .padRadius(d => d.innerRadius)
             .innerRadius(d => d.innerRadius)
             .outerRadius(d => d.outerRadius)
-            .padAngle(Math.PI / 60)
-          vis.pie = d3.pie()
-          vis.color = d3.scaleOrdinal().range(vis.theme)
+            .padAngle(2 * (Math.PI / 180))
+
+          return arc
         }
 
         wrangleData(ds) {
           const vis = this
+
           const values = Object.values(ds)
-          const generator = d3.map(values, data => vis.pie(Object.values(data)))
+
+          const labels = d3.map(values, values => Object.keys(values))
+
+          const pie = d3.pie()
+          const generator = d3.map(values, data => {
+            return pie(Object.values(data))
+          })
 
           const viewBoxMin = d3.min(vis.viewport)
           const layers = generator.length
           const radius = viewBoxMin / 2 / layers
 
-          d3.map(generator, (data, index) => {
+          d3.map(generator, (data, layer) => {
             const tatal = d3.sum(data, d => d.value)
-            d3.map(data, d => {
+            d3.map(data, (d, i) => {
+              d.label = labels[layer][i]
               d.percentage = Math.round((d.value / tatal) * 10000) / 100 + '%'
-              d.layer = index
-              d.innerRadius = radius * index + (index && +20)
-              d.outerRadius = radius + index * radius
+              d.layer = layer
+              d.innerRadius = radius * layer + (layer && +vis.gutters)
+              d.outerRadius = radius + layer * radius
               return d
             })
           })
 
           vis.updateVis(values, generator).then(() => {
-            d3.selectAll('.enterPath')
+            vis.view
+              .selectAll('.enterPath')
               .on('mouseenter', (e, i) => {
-                vis.hover(e, vis.arc, 1.1)
+                vis.hover(e, vis.generateArc, 1.1)
               })
-              .on('mouseleave', e => vis.hover(e, vis.arc, 1))
+              .on('mouseleave', e => vis.hover(e, vis.generateArc, 1))
               .classed('enterPath', false)
           })
         }
 
         updateGroup(datum) {
-          console.log(datum)
           const vis = this
           vis.groups = vis.view
             .selectAll('.enter')
@@ -149,12 +162,9 @@
           const vis = this
 
           vis.updateGroup(pieGenerators)
-
-          const enterPath = vis.view
-            .selectAll('.enter')
-            .selectAll('path')
-            .data(d => d)
-
+          const enterGroup = vis.view.selectAll('.enter')
+          const enterPath = enterGroup.selectAll('path').data(d => d)
+          enterPath.exit().remove()
           await enterPath
             .enter()
             .append('path')
@@ -162,37 +172,44 @@
               els[i].__cache__ = { startAngle: 0, endAngle: 0 }
             })
             .attrs((d, i) => ({
-              transform: `translate(${this.center()})`,
-              fill: this.color(i) + '33',
-              stroke: this.color(i)
+              transform: `translate(${vis.center()})`,
+              fill: vis.color(i) + '33',
+              stroke: vis.color(i)
             }))
             .classed('enterPath', true)
             .merge(enterPath)
             .transition(vis.t)
             .attrTween('d', (arc, i, els) => {
               const lerpAngle = vis.storeArc(els[i], arc)
-              return t => vis.arc(lerpAngle(t))
+              return t => vis.generateArc(lerpAngle(t))
             })
             .end()
 
-          const enterText = vis.view
-            .selectAll('.enter')
-            .selectAll('text')
-            .data(d => d)
+          const text = enterGroup.selectAll('text').data(d => d)
 
-          enterText
+          const enterText = text
             .enter()
             .append('text')
-            .merge(enterText)
-            .text(d => d.percentage)
+            .merge(text)
             .attrs({
               fill: (d, i) => vis.color(i),
-              transform: d => `translate(${vis.center(vis.arc.centroid(d))})`
+              transform: d =>
+                `translate(${vis.center(
+                  vis.generateArc.centroid(d).map(center => center * 1)
+                )})`
             })
+            .html(d => {
+              return `
+              <tspan>${d.label}</tspan>
+              <tspan dx="-1.75em" dy="1.2em">${d.percentage}</tspan>`
+            })
+
+          text.exit().remove()
         }
 
         hover({ target: path }, arc, tween) {
           const vis = this
+
           d3.select(path)
             .transition(vis.t)
             .attr(
@@ -204,26 +221,25 @@
             )
         }
       }
-      let data = barcharUpdate()
-      const pieChart = new PieChart(data)
+
+      const pieChart = new PieChart(barcharUpdate())
 
       // setInterval(() => {
-      //   data = barcharUpdate()
-      //   pieChart.wrangleData(data)
-      // }, 3000)
+      //   pieChart.wrangleData(barcharUpdate())
+      // }, 10000)
 
-      function barcharUpdate(freq = 10, offset = 2) {
+      function barcharUpdate() {
         const data = {}
-        const k = 2
-        const l = 1
-        let i = k
-        while (i--) {
+        const k = 1
+
+        let layers = k
+        while (layers--) {
           const d = {}
-          let j = i + 2
-          while (j--) {
-            d[String.fromCharCode(64 + j)] = d3.randomInt(1, 5)()
+          let piece = d3.randomInt(1, 6)()
+          while (piece--) {
+            d[String.fromCharCode(65 + piece)] = d3.randomInt(1, 8)()
           }
-          data[String.fromCharCode(97 + i)] = d
+          data[String.fromCharCode(97 + layers)] = d
         }
 
         return data

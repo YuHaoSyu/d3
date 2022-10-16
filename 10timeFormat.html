@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>D3 Time Format</title>
+    <script src="./vendors/d3.js"></script>
+    <script src="./vendors/d3-selection-multi.js"></script>
+    <link rel="stylesheet" href="./css/style.css" />
+    <link rel="icon" href="./img/favicon.ico" type="image/ico" />
+  </head>
+  <body>
+    <table class="table">
+      <thead>
+        <th>
+          Specifier <span class="text-primary">d3.isoFormat(now)</span> :
+          <span class="text-warning" id="current"></span>
+        </th>
+        <th>Time</th>
+        <th>UTC</th>
+      </thead>
+      <tbody id="formatTable"></tbody>
+    </table>
+    <table class="table">
+      <thead>
+        <th>
+          Specifier <span class="text-primary">d3.isoFormat(now)</span> :
+          <span class="text-warning" id="current"></span>
+        </th>
+        <th>Time</th>
+        <th>UTC</th>
+      </thead>
+      <tbody id="parseTable"></tbody>
+    </table>
+    <script>
+      function timeFormat(specifier, desc) {
+        function insertBeforeend(html) {
+          tr.insertAdjacentHTML('beforeend', html)
+        }
+        const tbody = document.querySelector('#formatTable')
+        const tr = document.createElement('tr')
+        tbody.append(tr)
+
+        insertBeforeend(
+          `<td>${specifier} : <span class='text-secondary'>${desc}</span></td>`
+        )
+
+        const time = d3.timeFormat(specifier)
+        const utc = d3.utcFormat(specifier)
+        return function convert(value) {
+          insertBeforeend(`<td>${time(value)}</td>
+          <td>${utc(value)}</td>`)
+          return convert
+        }
+      }
+      const now = new Date()
+      const current = document.getElementById('current')
+      current.textContent = d3.isoFormat(now)
+
+      const specifiersObj = {
+        '%a': 'abbreviated weekday name.*',
+        '%A': 'full weekday name.*',
+        '%b': 'abbreviated month name.*',
+        '%B': 'full month name.*',
+        '%c': "the locale's date and time, such as %x, %X.*",
+        '%d': 'zero-padded day of the month as a decimal number [01,31].',
+        '%e': 'space-padded day of the month as a decimal number [ 1,31]; equivalent to %_d.',
+        '%f': 'microseconds as a decimal number [000000, 999999].',
+        '%g': 'ISO 8601 week-based year without century as a decimal number [00,99].',
+        '%G': 'ISO 8601 week-based year with century as a decimal number.',
+        '%H': 'hour (24-hour clock) as a decimal number [00,23].',
+        '%I': 'hour (12-hour clock) as a decimal number [01,12].',
+        '%j': 'day of the year as a decimal number [001,366].',
+        '%m': 'month as a decimal number [01,12].',
+        '%M': 'minute as a decimal number [00,59].',
+        '%L': 'milliseconds as a decimal number [000, 999].',
+        '%p': 'either AM or PM.*',
+        '%q': 'quarter of the year as a decimal number [1,4].',
+        '%Q': 'milliseconds since UNIX epoch.',
+        '%s': 'seconds since UNIX epoch.',
+        '%S': 'second as a decimal number [00,61].',
+        '%u': 'Monday-based (ISO 8601) weekday as a decimal number [1,7].',
+        '%U': 'Sunday-based week of the year as a decimal number [00,53].',
+        '%V': 'ISO 8601 week of the year as a decimal number [01, 53].',
+        '%w': 'Sunday-based weekday as a decimal number [0,6].',
+        '%W': 'Monday-based week of the year as a decimal number [00,53].',
+        '%x': "the locale's date, such as %-m/%-d/%Y.*",
+        '%X': "the locale's time, such as %-I:%M:%S %p.*",
+        '%y': 'year without century as a decimal number [00,99].',
+        '%Y': 'year with century as a decimal number, such as 1999.',
+        '%Z': 'time zone offset, such as -0700, -07:00, -07, or Z.',
+        '%%': 'a literal percent sign (%)'
+      }
+      for (const s in specifiersObj) {
+        timeFormat(s, specifiersObj[s])(now)
+      }
+
+      function timeParse(specifier, desc) {
+        function insertBeforeend(html) {
+          tr.insertAdjacentHTML('beforeend', html)
+        }
+        const tbody = document.querySelector('#parseTable')
+        const tr = document.createElement('tr')
+        tbody.append(tr)
+
+        insertBeforeend(
+          `<td>${specifier} : <span class='text-secondary'>${desc}</span></td>`
+        )
+
+        const time = d3.timeFormat(specifier)
+        const utc = d3.utcFormat(specifier)
+        return function convert(value) {
+          insertBeforeend(`<td>${time(value)}</td>
+          <td>${utc(value)}</td>`)
+          return convert
+        }
+      }
+    </script>
+  </body>
+</html>

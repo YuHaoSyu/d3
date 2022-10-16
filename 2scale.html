@@ -4,165 +4,122 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>D3 Axes, Scales, Interpolate</title>
+    <title>D3 Axes, Scales</title>
     <script src="./vendors/d3.js"></script>
+    <script src="./vendors/d3-selection-multi.js"></script>
+    <link rel="stylesheet" href="./css/style.css" />
+    <link rel="icon" href="./img/favicon.ico" type="image/ico" />
   </head>
   <body>
-    <svg width="100vw" height="400vh"></svg>
+    <svg width="100vw" height="53vh"></svg>
+    <table class="table text-center">
+      <thead>
+        <tr>
+          <th>Argument</th>
+          <th>Domain</th>
+          <th>Range</th>
+          <th>Ticks</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
     <script>
       function translate(el, x, y = x) {
         el.attr('transform', `translate(${x},${y})`)
       }
-
-      const coor = [
-        [50, 50],
-        [50, 350],
-        [50, 50],
-        [350, 50]
-      ]
-      let times = 0
-      while ((times += 50) < 600) {
-        coor.push([400, times])
-      }
-      const g = []
-      const svg = d3.select('svg')
-      coor.forEach(([x, y]) => g.push(svg.append('g').call(translate, x, y)))
+      // prettier-ignore
+      const g = [[50, 50], [50, 350], [50, 50], [350, 50]]
+        .concat(Array.from({ length: 11 }, (e, i) => [400, 50 + i * 50]))
+        .map(([x, y]) =>
+          d3.select('svg')
+            .append('g')
+            .attr('transform', `translate(${x},${y})`)
+        )
 
       const scLinear = d3.scaleLinear().domain([0, 10]).range([0, 300])
 
+      d3.axisTop(scLinear)(g[0])
+      d3.axisBottom(scLinear)(g[1])
+      d3.axisLeft(scLinear)(g[2])
+      d3.axisRight(scLinear)(g[3])
+
       const scPow = d3.scalePow().exponent(2).domain([0, 100]).range([0, 800])
+      d3.axisBottom(scPow)(g[4])
+
       const scLog = d3.scaleLog().base(10).domain([1, 10000000000]).range([0, 800])
+      d3.axisTop(scLog)(g[5])
 
-      console.log('covert 5 is:', scLinear(5), ', invert 95 is: ', scLinear.invert(95))
-      console.log('clamp is false: ', scLinear(-5), scLinear.invert(105))
-      scLinear.clamp(true)
-      console.log('clamp is true: ', scLinear(-5), scLinear.invert(105))
-
-      function paint(y) {
-        const ticks = d3.ticks(0, 1, 100)
-        return function (interpolateColor) {
-          ticks.map(interpolateColor).forEach((color, i) =>
-            svg
-              .append('rect')
-              .attr('fill', color)
-              .attr('width', 13)
-              .attr('height', 14)
-              .call(translate, i * 13, y)
-          )
-          y += 15
-        }
-      }
-
-      const painting = paint(550)
-
-      const rgb = d3.scaleLinear().range(['red', 'blue']).interpolate(d3.interpolateHsl)
-      const hsl = rgb.copy().interpolate(d3.interpolateHslLong)
-      const linearColor = d3.interpolateRgb.gamma(2.2)('purple', 'orange')
-      const red2whitee = d3.interpolate('red', 'white')
-
-      painting(rgb)
-      painting(hsl)
-      painting(red2whitee)
-      painting(linearColor)
-      const themes = [
-        'BrBG',
-        'PiYG',
-        'PRGn',
-        'PuOr',
-        'RdBu',
-        'RdGy',
-        'RdYlBu',
-        'RdYlGn',
-        'Spectral',
-        'Blues',
-        'Greens',
-        'Greys',
-        'Oranges',
-        'Purples',
-        'Reds',
-        'BuGn',
-        'BuPu',
-        'Cividis',
-        'Cool',
-        'CubehelixDefault',
-        'GnBu',
-        'Inferno',
-        'Magma',
-        'OrRd',
-        'Plasma',
-        'PuBu',
-        'PuBuGn',
-        'PuRd',
-        'RdPu',
-        'Turbo',
-        'Viridis',
-        'Warm',
-        'YlGn',
-        'YlGnBu',
-        'YlOrBr',
-        'YlOrRd',
-        'Rainbow',
-        'Sinebow'
-      ]
-      themes.forEach(theme => painting(d3['interpolate' + theme]))
-
+      const scTime = d3.scaleTime().range([0, 800])
       const timeStamp = date => new Date(date).getTime()
+      const startTime = timeStamp('2020/1/1')
 
-      const scYear = d3
-        .scaleTime()
-        .domain([timeStamp('2020/1/1'), timeStamp('2030/1/1')])
-        .range([0, 800])
-      const scMonth = d3
-        .scaleTime()
-        .domain([timeStamp('2020/1/1'), timeStamp('2020/12/1')])
-        .range([0, 800])
-      const scDay = d3
-        .scaleTime()
-        .domain([timeStamp('2020/1/1'), timeStamp('2020/1/31')])
-        .range([0, 800])
-      const scHour = d3
-        .scaleTime()
-        .domain([timeStamp('2020/1/1'), timeStamp('2020/1/2')])
-        .range([0, 800])
-      const scMinute = d3
-        .scaleTime()
-        .domain([timeStamp('2020/1/1'), timeStamp('2020/1/1') + 60 * 60])
-        .range([0, 800])
+      const domainYear = scTime.domain([startTime, timeStamp('2030/1/1')])
+      d3.axisTop(domainYear)(g[6])
+
+      const domainMonth = scTime.domain([startTime, timeStamp('2020/12/1')])
+      d3.axisTop(domainMonth)(g[7])
+
+      const domainDay = scTime.domain([startTime, timeStamp('2020/1/31')])
+      d3.axisTop(domainDay)(g[8])
+
+      const domainHour = scTime.domain([startTime, timeStamp('2020/1/2')])
+      d3.axisTop(domainHour)(g[9])
+
+      const domainMinute = scTime.domain([startTime, startTime + 3600])
+      d3.axisTop(domainMinute)(g[10])
 
       requestAnimationFrame(function drawTimeSc() {
-        const now = new Date().getTime()
-        const scHr = d3
-          .scaleTime()
-          .domain([now - 30 * 60 * 1000, now + 30 * 60 * 1000])
-          .range([0, 800])
+        const now = Date.now()
 
-        // const newLine = svg.append('line')
-        const scMin = d3
-          .scaleTime()
-          .domain([now - 30 * 1000, now + 30 * 1000])
-          .range([0, 800])
-        const scSec = d3
-          .scaleTime()
-          .domain([now - 500, now + 500])
-          .range([0, 800])
-
-        d3.axisTop(scLinear)(g[0])
-        d3.axisBottom(scLinear)(g[1])
-        d3.axisLeft(scLinear)(g[2])
-        d3.axisRight(scLinear)(g[3])
-
-        d3.axisBottom(scPow)(g[4])
-        d3.axisTop(scLog)(g[5])
-        d3.axisTop(scYear)(g[6])
-        d3.axisTop(scMonth)(g[7])
-        d3.axisTop(scDay)(g[8])
-        d3.axisTop(scHour)(g[9])
-        d3.axisTop(scMinute)(g[10])
+        const scHr = scTime.domain([now - 30 * 60 * 1000, now + 30 * 60 * 1000])
         d3.axisTop(scHr)(g[11])
+        const scMin = scTime.domain([now - 30 * 1000, now + 30 * 1000])
         d3.axisTop(scMin)(g[12])
+        const scSec = scTime.domain([now - 500, now + 500])
         d3.axisTop(scSec)(g[13])
-        requestAnimationFrame(drawTimeSc)
+        // requestAnimationFrame(drawTimeSc)
       })
+
+      const scale = {
+        linear: d3.scaleLinear().domain([-100, 100]).range([-300, 300]),
+        linearClamp: d3.scaleLinear().domain([0, 100]).range([0, 300]).clamp(true),
+        pow2: d3.scalePow().domain([0, 10]).range([0, 100]).exponent(2),
+        pow3: d3.scalePow().domain([0, 10]).range([0, 1000]).exponent(3),
+        log2: d3.scaleLog().domain([1, 100]).range([1, 4]).base(2),
+        log10: d3.scaleLog().domain([1, 100]).range([1, 2]).base(10)
+      }
+      function insertBeforeend(tbody, html) {
+        tbody.insertAdjacentHTML('beforeend', html)
+      }
+      // prettier-ignore
+      function listScale(type) {
+        const tbody = document.querySelector('tbody')
+        const typeRow = `<tr class='table-primary'>
+            <td>${type}</td>
+            <td>[${scale[type].domain().join(', ')}]</td>
+            <td>[${scale[type].range().join(', ')}]</td>
+            <td>[${scale[type].ticks().join(', ')}]</td>
+          </tr>`
+        insertBeforeend(tbody,typeRow)
+
+        return function calc(num) {
+          insertBeforeend(tbody,
+            `<tr class='text-end'>
+              <td>${num}</td>
+              <td>${scale[type](num)}</td>
+              <td>${scale[type].invert(num)}</td>
+              <td class='text-center'>[${scale[type].ticks(6).join(', ')}]</td>
+          </tr>`)
+          return calc
+        }
+      }
+      listScale('linear')(5)(300)(-5)(-300)
+      listScale('linearClamp')(-5)
+      listScale('pow2')(100)(10)(0)
+      listScale('pow3')(10)(100)(1000)
+      listScale('log2')(1)(2)(3)(4)(5)(6)(7)(8)(9)(100)
+      listScale('log10')(1)(2)(100)
     </script>
   </body>
 </html>

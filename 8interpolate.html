@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>D3 Interpolate</title>
+    <script src="./vendors/d3.js"></script>
+    <script src="./vendors/d3-selection-multi.js"></script>
+    <link rel="icon" href="./img/favicon.ico" type="image/ico" />
+  </head>
+  <body>
+    <svg width="110vw" height="400vh"></svg>
+    <script>
+      function translate(el, x, y = x) {
+        el.attr('transform', `translate(${x},${y})`)
+      }
+
+      const svg = d3.select('svg')
+
+      function mapTheme(interpolateColor, y) {
+        const ticks = d3.ticks(0, 1, 100)
+        ticks.map(interpolateColor).forEach((color, i) =>
+          svg
+            .append('rect')
+            .attrs({
+              fill: color,
+              width: 13,
+              height: 14
+            })
+
+            .call(translate, 100 + i * 14, y)
+        )
+      }
+
+      const rgb = d3.scaleLinear().range(['red', 'blue']).interpolate(d3.interpolateHsl)
+      mapTheme(rgb, 0)
+
+      const hsl = rgb.copy().interpolate(d3.interpolateHslLong)
+      mapTheme(hsl, 15)
+
+      const red2whitee = d3.interpolate('red', 'white')
+      mapTheme(red2whitee, 30)
+
+      const linearColor = d3.interpolateRgb.gamma(2.2)('purple', 'orange')
+      mapTheme(linearColor, 45)
+
+      function paint(y) {
+        return theme => {
+          svg
+            .append('text')
+            .call(translate, 0, y + 16)
+            .text(theme)
+          mapTheme(d3['interpolate' + theme], y)
+          y += 16
+        }
+      }
+      const painting = paint(60)
+      // prettier-ignore
+      const themes = ['BrBG', 'PiYG', 'PRGn', 'PuOr', 'RdBu', 'RdGy', 'RdYlBu', 'RdYlGn', 'Spectral', 'Blues', 'Greens', 'Greys', 'Oranges', 'Purples', 'Reds', 'BuGn', 'BuPu', 'Cividis', 'Cool', 'CubehelixDefault', 'GnBu', 'Inferno', 'Magma', 'OrRd', 'Plasma', 'PuBu', 'PuBuGn', 'PuRd', 'RdPu', 'Turbo', 'Viridis', 'Warm', 'YlGn', 'YlGnBu', 'YlOrBr', 'YlOrRd', 'Rainbow', 'Sinebow'].forEach(theme => painting(theme))
+    </script>
+  </body>
+</html>
