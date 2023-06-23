@@ -11,30 +11,39 @@
     <link rel="icon" href="./img/favicon.ico" type="image/ico" />
   </head>
   <body>
-    <svg width="100vw" height="53vh"></svg>
-    <table class="table text-center">
-      <thead>
-        <tr>
-          <th>Argument</th>
-          <th>Domain</th>
-          <th>Range</th>
-          <th>Ticks</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <div class="container">
+      <svg width="100%" height="110vh"></svg>
+      <table class="table text-center">
+        <thead>
+          <tr>
+            <th>Argument</th>
+            <th>Domain</th>
+            <th>Range</th>
+            <th>Ticks</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
 
     <script>
       function translate(el, x, y = x) {
         el.attr('transform', `translate(${x},${y})`)
       }
       // prettier-ignore
-      const g = [[50, 50], [50, 350], [50, 50], [350, 50]]
-        .concat(Array.from({ length: 11 }, (e, i) => [400, 50 + i * 50]))
+      const offset = {x:0, y:0}
+      const g = [
+        [50, 50],
+        [50, 350],
+        [50, 50],
+        [350, 50]
+      ]
+        .concat(Array.from({ length: 19 }, (e, i) => [400, 50 + i * 50]))
         .map(([x, y]) =>
-          d3.select('svg')
+          d3
+            .select('svg')
             .append('g')
-            .attr('transform', `translate(${x},${y})`)
+            .attr('transform', `translate(${x + offset.x},${y + offset.y})`)
         )
 
       const scLinear = d3.scaleLinear().domain([0, 10]).range([0, 300])
@@ -80,6 +89,19 @@
         d3.axisTop(scSec)(g[13])
         // requestAnimationFrame(drawTimeSc)
       })
+
+      //--- axis
+      const baseScale = d3.scaleLinear().domain([0, 10]).range([0, 800])
+      const baseAxis = d3.axisBottom(baseScale)
+      d3.axisBottom(baseScale).offset(-10)(g[14])
+      d3.axisBottom(baseScale).tickArguments([20, ',.1f'])(g[15])
+      d3.axisBottom(baseScale).tickFormat(d3.format(',.3f'))(g[16])
+      d3.axisBottom(baseScale).tickPadding(15)(g[17])
+      d3.axisBottom(baseScale).tickSize(25)(g[18])
+      d3.axisBottom(baseScale).tickSizeInner(25)(g[19])
+      d3.axisBottom(baseScale).tickSizeOuter(25)(g[20])
+      d3.axisBottom(baseScale).tickValues([1, 2, 3, 5, 7, 9])(g[21])
+      d3.axisBottom(baseScale).ticks(5)(g[22])
 
       const scale = {
         linear: d3.scaleLinear().domain([-100, 100]).range([-300, 300]),
