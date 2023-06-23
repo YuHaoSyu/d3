@@ -14,12 +14,12 @@ class Label {
       transform: 'rotate(270)'
     }
     chart.xLabel && this.top(chart)
-    chart.yLebel && this.left(chart)
+    chart.yLabel && this.left(chart)
   }
   top(chart) {
     this.view.append('text').attrs(this.topPos).text(chart.xLabel)
   }
   left(chart) {
-    this.view.append('text').attrs(this.leftPos).text(chart.yLebel)
+    this.view.append('text').attrs(this.leftPos).text(chart.yLabel)
   }
 }

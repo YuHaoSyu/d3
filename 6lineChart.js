@@ -8,7 +8,7 @@ class LineChart {
       marginLeft: 60,
       marginRight: 30,
       xLabel: 'xLabel',
-      yLebel: 'yLabel',
+      yLabel: 'yLabel',
       paddingX: 0.5,
       dur: 80,
       curve: 'curveLinear',
